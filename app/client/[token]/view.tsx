@@ -1,0 +1,10 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {FolderOpen,LockKeyhole} from 'lucide-react';
+import PortalGallery from '../../portal-gallery';
+export default function ClientView({token}:{token:string}){
+ const [data,setData]=useState<any>(null),[locked,setLocked]=useState(false),[code,setCode]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ async function load(){const r=await fetch('/api/client-view?token='+encodeURIComponent(token),{cache:'no-store'}),j:any=await r.json();if(j.locked){setLocked(true);return;}if(!r.ok)throw Error(j.error||'资料暂时不可用');setData(j);setLocked(false);}
+ useEffect(()=>{load().catch(e=>setError(e.message));},[token]);
+ return <div className="customer-portal-page"><header className="customer-portal-top"><span><FolderOpen size={21}/>企业展示中心</span><small>正式资料 · 集中查阅</small></header><main>{locked?<section className="portal-lock"><LockKeyhole size={34}/><h1>请输入访问码</h1><p>这份资料由负责人设置了访问保护。</p><form onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{const r=await fetch('/api/client-view',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,code})}),j:any=await r.json();if(!r.ok)throw Error(j.error);await load();}catch(e:any){setError(e.message);}finally{setBusy(false);}}}><input aria-label="资料访问码" type="password" autoComplete="off" maxLength={80} value={code} onChange={e=>setCode(e.target.value)} placeholder="输入负责人提供的访问码"/><button className="primary" disabled={busy||!code}>{busy?'正在验证…':'查看资料'}</button></form>{error&&<p role="alert" className="error">{error}</p>}</section>:data?<><PortalGallery content={data.content} address={(id,download)=>'/api/client-view?token='+token+'&file='+id+(download?'&download=1':'')}/><p className="portal-publish-note">发布于 {new Date(data.publishedAt).toLocaleString('zh-CN')}{data.expires?' · 有效至 '+new Date(data.expires).toLocaleString('zh-CN'):''} · {data.content.download?'可预览与下载':'仅供在线查阅'}</p></>:<div className="portal-lock"><FolderOpen size={36}/><h1>{error?'暂时无法查看资料':'正在打开资料…'}</h1><p role={error?'alert':undefined}>{error||'请稍候'}</p></div>}</main></div>;
+}

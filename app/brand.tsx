@@ -1,0 +1,1 @@
+export default function Brand(){return <a className="brand kg-brand" href="/" aria-label="KGwork 工作台"><span className="kg-symbol" aria-hidden="true">K<span>G</span></span><span className="kg-wordmark"><strong>KG<span>work</span></strong><small>工作台</small></span></a>;}

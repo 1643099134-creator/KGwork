@@ -1,0 +1,1 @@
+ALTER TABLE `task_deliverables` ADD `purpose` text DEFAULT 'result' NOT NULL;

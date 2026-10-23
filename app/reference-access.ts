@@ -1,0 +1,2 @@
+export const parseAccessList=(s:string)=>{try{const v=JSON.parse(s);return Array.isArray(v)?v:[];}catch{return [];}};
+export function referenceAccess(f:any,user:string,groups:string[]){if(f.owner===user)return true;if(f.visibility==='private'||parseAccessList(f.denied).includes(user))return false;return f.visibility==='team'||f.visibility==='custom'&&(parseAccessList(f.allowed).includes(user)||parseAccessList(f.groups).some((id:string)=>groups.includes(id)));}

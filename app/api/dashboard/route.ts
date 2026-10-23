@@ -1,0 +1,15 @@
+import {db,identity,member,str,json,failure,error} from '../../task-service';
+import {GET as workspace} from '../workspace/route';
+import {GET as calendar} from '../calendar/route';
+import {GET as projects} from '../projects/route';
+import {GET as library} from '../library/route';
+import {GET as references} from '../references/route';
+export async function GET(req:Request){try{
+ const q=new URL(req.url).searchParams,team=str(q.get('team'),80),u=await identity(),m=await member(team,u.userId),today=new Date(Date.now()+8*3600000).toISOString().slice(0,10),end=new Date(Date.parse(today+'T00:00:00Z')+6*86400000).toISOString().slice(0,10),warnings:string[]=[];
+ async function read(fn:(r:Request)=>Promise<Response>,path:string,label:string){try{const r=await fn(new Request(new URL(path,req.url))),j:any=await r.json();if(!r.ok)throw Error();return j;}catch{warnings.push(label+'暂时未更新');return null;}}
+ const [work,cal,pr,lib,ref]=await Promise.all([q.get('extras')==='1'?null:read(workspace,'/api/workspace?team='+team,'任务'),read(calendar,'/api/calendar?team='+team+'&from='+today+'&to='+end,'日程'),read(projects,'/api/projects?team='+team,'项目'),read(library,'/api/library?team='+team,'文件'),read(references,'/api/references?team='+team,'资料')]);
+ if(q.get('extras')!=='1'&&!work)throw error('工作区暂时无法更新，请稍后刷新',503);
+ const selectedProjects=(pr?.projects||[]).slice(0,4);let nodes:any[]=[];
+ if(selectedProjects.length){const rows=await db().prepare(`SELECT pn.*,n.status AS linked_status,n.progress AS linked_progress FROM project_nodes pn LEFT JOIN notes n ON n.id=pn.task AND n.team=? AND (?='admin' OR n.kind!='task' OR n.assignee=? OR EXISTS(SELECT 1 FROM list_permissions lp WHERE lp.team=n.team AND lp.owner=n.assignee AND lp.viewer=?)) WHERE pn.project IN (${selectedProjects.map(()=>'?').join(',')}) ORDER BY pn.created`).bind(team,m.role,u.userId,u.userId,...selectedProjects.map((p:any)=>p.id)).all<any>();nodes=rows.results.filter(n=>!n.task||n.linked_status!=null).map(n=>({...n,status:n.task?n.linked_status:n.status,progress:n.task?n.linked_progress:n.progress}));}
+ return json({work,extras:{today,events:cal?.events||[],projects:selectedProjects.map((p:any)=>{const own=nodes.filter(n=>n.project===p.id),next=own.find(n=>n.status!=='done');return {id:p.id,name:p.name,color:p.color,updated:p.updated,total:own.length,completed:own.filter(n=>n.status==='done').length,progress:own.length?Math.round(own.reduce((s,n)=>s+(n.status==='done'?100:n.progress||0),0)/own.length):0,next:next?{name:next.name,due:next.due,assignee:next.assignee}:null};}),files:(lib?.items||[]).sort((a:any,b:any)=>(b.updated||b.created)-(a.updated||a.created)).slice(0,4).map((f:any)=>({id:f.id,name:f.name,kind:f.kind,url:f.url,mime:f.mime,size:f.size,taskSource:!!f.taskSource,created:f.updated||f.created})),references:(ref?.items||[]).filter((f:any)=>f.pinned||f.lastused).sort((a:any,b:any)=>Number(b.pinned)-Number(a.pinned)||b.lastused-a.lastused).slice(0,4).map((f:any)=>({id:f.id,title:f.title,category:f.category,copyText:f.copyText,pinned:f.pinned})),warnings,loaded:Date.now()}});
+ }catch(e){return failure(e);}}

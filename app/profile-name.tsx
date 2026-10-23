@@ -1,0 +1,8 @@
+'use client';
+import {useState} from 'react';
+import {Pencil,X,Check} from 'lucide-react';
+export default function ProfileName({name}:{name:string}){
+ const [current,setCurrent]=useState(name),[open,setOpen]=useState(false),[draft,setDraft]=useState(name),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ async function save(){setBusy(true);setError('');try{const r=await fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:draft})}),j:any=await r.json();if(!r.ok)throw Error(j.error||'修改失败');setCurrent(j.name);setOpen(false);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
+ return <><button type="button" className="profile-name-button" title="修改我的名称" aria-label={'修改我的名称：'+current} onClick={()=>{setDraft(current);setError('');setOpen(true);}}><span>{current}</span><Pencil size={12}/></button>{open&&<div className="modal-overlay profile-name-overlay"><section className="modal" role="dialog" aria-modal="true" aria-label="修改我的名称"><button type="button" className="modal-close" aria-label="关闭名称设置" disabled={busy} onClick={()=>setOpen(false)}><X size={18}/></button><h2>修改我的名称</h2><p className="muted">伙伴在团队中看到这个名称。修改后，登录邮箱保持不变。</p><label className="form-label">显示名称<input aria-label="显示名称" maxLength={40} value={draft} disabled={busy} onChange={e=>setDraft(e.target.value)} placeholder="填写姓名或昵称"/></label>{error&&<p className="error" role="alert">{error}</p>}<button type="button" className="primary" disabled={busy||!draft.trim()} onClick={save}><Check size={16}/>{busy?'正在保存…':'保存名称'}</button></section></div>}</>;
+}

@@ -1,0 +1,1 @@
+CREATE INDEX `project_file_annotations_scope` ON `project_file_annotations` (`project`,`item`,`source`,`created`);

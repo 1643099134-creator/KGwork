@@ -1,0 +1,6 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {Clock,X} from 'lucide-react';
+import {useUnread} from './message-counts';
+import {useNavAccess} from './nav-access';
+export default function ReviewNudge(){const roles=useNavAccess(),[team,setTeam]=useState(''),[hiddenUntil,setHiddenUntil]=useState(0),[clock,setClock]=useState(0);useEffect(()=>{const read=()=>{const q=new URLSearchParams(location.search).get('team');setTeam(roles.some(r=>r.team===q)?q!:roles[0]?.team||'');setClock(Date.now());};read();const t=setInterval(read,15000);window.addEventListener('popstate',read);try{setHiddenUntil(Number(sessionStorage.getItem('project-review-nudge-until')||0));}catch{}return()=>{clearInterval(t);window.removeEventListener('popstate',read);};},[roles]);const counts=useUnread(team);if(!counts?.projectOverdue||clock<hiddenUntil||!team)return null;return <aside className="project-review-nudge" role="status" aria-label="项目待批复提醒"><Clock size={20}/><div><strong>{counts.projectOverdue} 份项目成果到了批复时间</strong><p>打开过不算已批复。请确认、退回，或选择稍后提醒。</p><a href={'/projects?team='+encodeURIComponent(team)+'&review=1'}>去查看待审阅成果 →</a></div><button aria-label="两小时内收起待批复提示" title="收起2小时，待审阅记录仍保留" onClick={()=>{const until=Date.now()+2*3600000;setHiddenUntil(until);try{sessionStorage.setItem('project-review-nudge-until',String(until));}catch{}}}><X size={16}/></button></aside>;}
